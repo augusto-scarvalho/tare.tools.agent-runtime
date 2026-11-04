@@ -34,6 +34,10 @@ python -m pytest -q
 python -m compileall -q src
 ```
 
+CI runs these same commands on GitHub-hosted Linux and Windows runners. To run them on your
+own machines instead, set the repository variables `CI_RUNNER_LINUX` and `CI_RUNNER_WINDOWS`
+to a runner label list (for example `["self-hosted","Linux"]`).
+
 ## Charter
 
 This repository owns:
