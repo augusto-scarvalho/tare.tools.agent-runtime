@@ -6,22 +6,30 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   core:
-    name: Core and boundary falsifiers (${{ matrix.platform }})
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    name: Tests (${{ matrix.platform }})
+    # GitHub-hosted runners by default. The repository variables CI_RUNNER_LINUX and CI_RUNNER_WINDOWS (a JSON
+    # label or label list, e.g. ["self-hosted","Linux"]) move a platform to your own runners; pull requests from
+    # forks then skip this job, since they could run any code there.
+    if: >-
+      github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+      || (!vars.CI_RUNNER_LINUX && !vars.CI_RUNNER_WINDOWS)
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: windows-host
-            runner: '["self-hosted","Windows"]'
-            python: python
-            venv_python: .venv/Scripts/python.exe
-          - platform: linux-wsl2
-            runner: '["self-hosted","Linux","wsl2"]'
-            python: python3
-            venv_python: .venv/bin/python
+          - platform: linux
+            runner: ${{ vars.CI_RUNNER_LINUX || '"ubuntu-latest"' }}
+          - platform: windows
+            runner: ${{ vars.CI_RUNNER_WINDOWS || '"windows-latest"' }}
     runs-on: ${{ fromJSON(matrix.runner) }}
     timeout-minutes: 10
     steps:
@@ -30,13 +38,18 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install isolated dependencies
-        run: |
-          ${{ matrix.python }} -m venv .venv
-          ${{ matrix.venv_python }} -m pip install -e ".[dev]"
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: python -m pip install -e ".[dev]"
 
       - name: Compile
-        run: ${{ matrix.venv_python }} -m compileall -q src
+        run: python -m compileall -q src
 
       - name: Test
-        run: ${{ matrix.venv_python }} -m pytest -q
+        run: python -m pytest -q

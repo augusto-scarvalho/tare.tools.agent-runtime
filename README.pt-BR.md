@@ -35,6 +35,10 @@ python -m pytest -q
 python -m compileall -q src
 ```
 
+A CI roda esses mesmos comandos em runners Linux e Windows hospedados pelo GitHub. Para
+rodá-los nas suas próprias máquinas, defina as variáveis de repositório `CI_RUNNER_LINUX` e
+`CI_RUNNER_WINDOWS` com uma lista de labels de runner (por exemplo `["self-hosted","Linux"]`).
+
 ## Escopo
 
 Este repositório é dono de:
