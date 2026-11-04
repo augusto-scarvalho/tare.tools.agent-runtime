@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0.0",
+  "created_at": "2026-08-24",
+  "authority": {
+    "repository": "augusto-scarvalho/tare.tools.os",
+    "adr": "ADR-057_AGENT_RUNTIME_BOUNDED_CONTEXT_AND_REPOSITORY.md",
+    "case_id": "CASE-2026-08-24-AGENT-RUNTIME-BOUNDARY",
+    "f0_commit": "c806ad9"
+  },
+  "lineage": {
+    "git_history": "new",
+    "source_origin": "clean implementation from ADR-057 F0 contracts",
+    "tare.tools.harness_source_read": false,
+    "tare.tools.harness_source_copied": false,
+    "tare.tools.harness_imported": false
+  },
+  "production_wiring": "HELD_PENDING_INTEGRATION_GATES"
+}

@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  core:
+    name: Core and boundary falsifiers (${{ matrix.platform }})
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-host
+            runner: '["self-hosted","Windows"]'
+            python: python
+            venv_python: .venv/Scripts/python.exe
+          - platform: linux-wsl2
+            runner: '["self-hosted","Linux","wsl2"]'
+            python: python3
+            venv_python: .venv/bin/python
+    runs-on: ${{ fromJSON(matrix.runner) }}
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install isolated dependencies
+        run: |
+          ${{ matrix.python }} -m venv .venv
+          ${{ matrix.venv_python }} -m pip install -e ".[dev]"
+
+      - name: Compile
+        run: ${{ matrix.venv_python }} -m compileall -q src
+
+      - name: Test
+        run: ${{ matrix.venv_python }} -m pytest -q

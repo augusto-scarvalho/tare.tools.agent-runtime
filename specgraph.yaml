@@ -1,0 +1,28 @@
+schema_version: "1.0"
+project_name: "tare.tools.agent-runtime"
+governed_paths:
+  - src
+search_paths:
+  - README.md
+  - CHANGELOG.md
+  - AGENTS.md
+  - pyproject.toml
+  - CONTRACT_INVENTORY.json
+  - BOOTSTRAP_PROVENANCE.json
+  - specgraph.yaml
+spec_paths: []
+test_paths:
+  - tests
+schema_paths: []
+api_paths: []
+adr_paths: []
+excluded_paths:
+  - __pycache__
+  - .git
+  - .pytest_cache
+  - .specgraph
+  - tare_tools_agent_runtime.egg-info
+  - fixtures
+  - scratch
+  - .system_generated
+strict_orphan_check: false

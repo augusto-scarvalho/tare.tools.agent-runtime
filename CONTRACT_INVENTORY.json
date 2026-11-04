@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0.0",
+  "core_contract_version": "0.14.7",
+  "hash_algorithm": "sha256",
+  "hash_mode": "canonical_lf_utf8",
+  "sources": {
+    "src/tare_tools_agent_runtime/__init__.py": "a97ed2510f3c2f9291e8ce3695b3e45e0f82b77f7e1a754d371c0740356476db",
+    "src/tare_tools_agent_runtime/contracts.py": "9442a8b38b96c16c71dc82072c54f0adc80e7e3733db0928392adeb8ff6cdaf3",
+    "src/tare_tools_agent_runtime/conversation.py": "98f4fb6a85f3ecc75bfea72b35a4ab207fc70f2bcb21d27a049fbcb0a53ce233",
+    "src/tare_tools_agent_runtime/grounding.py": "285f7bd4f6ca156812f20cc0905d48467d2624c3f716091b47781bfa68798c4a",
+    "src/tare_tools_agent_runtime/native.py": "a97bb0488ac8b87337822a58351a345489f4c8bb6db7193e69df28afb5f723ab",
+    "src/tare_tools_agent_runtime/native_content.py": "6c90a34d0587a2b1b205cfa470afe103ae833c214944a3263b4d41ada03d7b7f",
+    "src/tare_tools_agent_runtime/native_context.py": "ef3a88544c2f48515b78694871b45a6dbaa8884f1582f752e1d6bc136d83620c",
+    "src/tare_tools_agent_runtime/prompt.py": "9566869445daaab8988e4bd4186e0d1ebf12f85eed120355481c2810db38d36e",
+    "src/tare_tools_agent_runtime/runtime.py": "e58f0328d0e43d7e0f09061ed5fc16a0bd91f77e0f912d57b7115fc463555b46",
+    "src/tare_tools_agent_runtime/work.py": "631cade3345a8aaae76f1339c010b8a6bcd8db486fa861ec10b0fc12e2df0162"
+  }
+}
