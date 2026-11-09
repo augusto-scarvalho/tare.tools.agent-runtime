@@ -343,6 +343,18 @@ def test_only_explicit_retryable_failures_retry_within_the_same_call_budget():
     assert any(e["kind"] == "model_failed" and e["code"] == "throttled" for e in events)
 
 
+def test_the_retry_budget_is_per_call_not_spent_for_the_whole_session():
+    # A failure early in a session used up the single retry of every later call: one more slip blocked it.
+    journal, tools = ConversationLog(), MemoryTools()
+    model = ScriptedModel([ModelFailure("slip", retryable=True), tool("read"),
+                           ModelFailure("slip", retryable=True), delivery()])
+    result = session(model, tools, journal, budget=NativeBudget(max_model_retries=1)).run(control())
+    assert result.status == "proposed" and result.model_calls == 4
+    model = ScriptedModel([ModelFailure("slip", retryable=True), ModelFailure("slip", retryable=True)])
+    result = session(model, MemoryTools(), ConversationLog(), budget=NativeBudget(max_model_retries=1)).run(control())
+    assert result.status == "blocked" and result.model_calls == 2  # two in a row still exceed one retry
+
+
 def test_retry_failure_before_terminal_persistence_does_not_reset_on_resume():
     journal, tools = ConversationLog(), MemoryTools()
     model = ScriptedModel([ModelFailure("throttled", retryable=True)] * 2)
