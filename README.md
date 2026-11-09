@@ -126,8 +126,9 @@ calling the model again. Persisting a tool receipt prevents repeating the tool.
 
 For simulated resume, construct a new session against the same journal with the
 same identity, instruction, capabilities, budget and binding. With `NativeContext`,
-the policy and protected sources are also bound on resume. Used calls/retries
-remain counted, including auxiliary summary intents. `model_calls` counts
+the policy and protected sources are also bound on resume. Used calls and the
+current failure streak remain counted (a resume never resets them), including
+auxiliary summary intents. `model_calls` counts
 admitted intents (including interrupted or undispatched reservations), not
 confirmed remote executions or billable calls. Metadata is retained for future
 normalization, not represented as a complete cost ledger.

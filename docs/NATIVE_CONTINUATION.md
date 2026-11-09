@@ -19,7 +19,8 @@ Returns True for a new append and False for an identical retry of the latest
 message. A stale ID or conflicting retry raises ValueError. Pending effects,
 unknown invocations, blocked terminals, expired control and exhausted calls
 cannot be cleared with a new instruction. Replaying the journal rejects invalid
-transitions. Calls/retries and effect identities remain cumulative; old proposals
+transitions. Calls and effect identities remain cumulative, and so does the current
+failure streak (a returned call ends it; a resume never resets it); old proposals
 remain in history. The host invokes `run` separately after the append, allowing
 recovery at that boundary without duplicate input.
 

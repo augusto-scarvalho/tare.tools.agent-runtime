@@ -1,10 +1,10 @@
 {
   "schema_version": "1.0.0",
-  "core_contract_version": "0.14.7",
+  "core_contract_version": "0.14.8",
   "hash_algorithm": "sha256",
   "hash_mode": "canonical_lf_utf8",
   "sources": {
-    "src/tare_tools_agent_runtime/__init__.py": "a97ed2510f3c2f9291e8ce3695b3e45e0f82b77f7e1a754d371c0740356476db",
+    "src/tare_tools_agent_runtime/__init__.py": "468282d42ddf8b4bd6cee62f51dd0f7e79153676a230149df99360ac6504e6b5",
     "src/tare_tools_agent_runtime/contracts.py": "9442a8b38b96c16c71dc82072c54f0adc80e7e3733db0928392adeb8ff6cdaf3",
     "src/tare_tools_agent_runtime/conversation.py": "98f4fb6a85f3ecc75bfea72b35a4ab207fc70f2bcb21d27a049fbcb0a53ce233",
     "src/tare_tools_agent_runtime/grounding.py": "285f7bd4f6ca156812f20cc0905d48467d2624c3f716091b47781bfa68798c4a",

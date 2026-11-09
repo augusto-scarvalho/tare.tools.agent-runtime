@@ -135,8 +135,8 @@ impede que ela seja repetida.
 Para uma retomada simulada, construa uma nova sessão sobre o mesmo journal com
 a mesma identidade, instrução, capacidades, orçamento e binding. Com
 `NativeContext`, a política e as fontes protegidas também ficam vinculadas na
-retomada. Chamadas e novas tentativas já usadas continuam contadas, incluindo
-as intenções auxiliares de resumo. `model_calls` conta intenções admitidas
+retomada. Chamadas usadas e a sequência atual de falhas continuam contadas (uma
+retomada nunca as zera), incluindo as intenções auxiliares de resumo. `model_calls` conta intenções admitidas
 (incluindo reservas interrompidas ou não despachadas), não execuções remotas
 confirmadas nem chamadas faturáveis. Os metadados são guardados para
 normalização futura e não formam um registro completo de custos.
