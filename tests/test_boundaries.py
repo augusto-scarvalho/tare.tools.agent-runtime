@@ -67,7 +67,7 @@ def test_bootstrap_provenance_is_clean_history_and_legacy_free() -> None:
 
 def test_contract_inventory_matches_exact_source_bytes() -> None:
     inventory = json.loads((ROOT / "CONTRACT_INVENTORY.json").read_text(encoding="utf-8"))
-    assert inventory["core_contract_version"] == "0.14.7"
+    assert inventory["core_contract_version"] == "0.14.8"
     assert inventory["hash_mode"] == "canonical_lf_utf8"
     expected_sources = {
         path.relative_to(ROOT).as_posix()

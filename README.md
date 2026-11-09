@@ -126,8 +126,9 @@ calling the model again. Persisting a tool receipt prevents repeating the tool.
 
 For simulated resume, construct a new session against the same journal with the
 same identity, instruction, capabilities, budget and binding. With `NativeContext`,
-the policy and protected sources are also bound on resume. Used calls/retries
-remain counted, including auxiliary summary intents. `model_calls` counts
+the policy and protected sources are also bound on resume. Used calls and the
+current failure streak remain counted (a resume never resets them), including
+auxiliary summary intents. `model_calls` counts
 admitted intents (including interrupted or undispatched reservations), not
 confirmed remote executions or billable calls. Metadata is retained for future
 normalization, not represented as a complete cost ledger.
@@ -331,7 +332,8 @@ The host composes these dependencies. The core never discovers or imports them.
 
 Native execution ceilings are independent options. `NativeBudget(max_model_calls=None,
 max_stagnant_turns=None, max_model_retries=None)` explicitly removes those ceilings;
-omitted fields retain 16/3/0 defaults. `ContextPolicy(max_compactions=None, ...)`
+omitted fields retain 16/3/0 defaults. `max_model_retries` counts failures in a row: a
+model call that returns resets it, so each call gets its own retries. `ContextPolicy(max_compactions=None, ...)`
 removes only the number-of-compactions ceiling. Calls, retries and summaries remain
 observed; context admission, cancellation, binding and pending-effect checks remain
 active. The host supplies and persists any deadline (or no deadline). Continuation

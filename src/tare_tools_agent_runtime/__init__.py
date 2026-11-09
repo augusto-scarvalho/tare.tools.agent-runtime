@@ -62,7 +62,7 @@ from .prompt import (
     PromptGate,
 )
 
-CORE_CONTRACT_VERSION = "0.14.7"
+CORE_CONTRACT_VERSION = "0.14.8"
 
 __all__ = [
     "AgentRuntime",

@@ -821,6 +821,9 @@ class NativeSession:
                     state.reply = ModelReply(**data)
                     state.effect_index = 0
                     state.reply_progressed = False
+                    # Retries are per call: one failure early in a long session no longer spends the retry of
+                    # every later call (2026-11-09, a blocked TUI session).
+                    state.failures = 0
                 else:
                     state.failures += 1
                     # Failure recorded before a crash must not bypass the retry policy.
