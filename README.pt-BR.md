@@ -351,7 +351,9 @@ O host compõe essas dependências. O núcleo nunca as descobre nem as importa.
 
 Os tetos da execução nativa são opções independentes. `NativeBudget(max_model_calls=None,
 max_stagnant_turns=None, max_model_retries=None)` remove esses tetos
-explicitamente; campos omitidos mantêm os padrões 16/3/0.
+explicitamente; campos omitidos mantêm os padrões 16/3/0. `max_model_retries` conta
+falhas seguidas: uma chamada de modelo que responde zera a contagem, então cada chamada
+tem suas próprias novas tentativas.
 `ContextPolicy(max_compactions=None, ...)` remove apenas o teto de número de
 compactações. Chamadas, novas tentativas e resumos continuam observados; a
 admissão de contexto e as verificações de cancelamento, binding e efeitos
