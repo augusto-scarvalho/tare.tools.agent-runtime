@@ -363,7 +363,10 @@ limites de tamanho de mensagem e de journal existentes continuam valendo.
 
 Com `max_compactions=0`, os pedidos mantêm o histórico original e são admitidos
 até `window - output_reserve - margin`. O gatilho suave apenas pede compactação;
-ele não descarta contexto ainda utilizável quando a compactação está desligada.
+ele não descarta contexto ainda utilizável quando a compactação está desligada ou
+quando ainda não há histórico compactável (por exemplo no turno 0, antes que algum
+turno anterior possa ser resumido). Pedidos acima do teto rígido continuam falhando
+fechados.
 
 ### Observações do host (0.14.0)
 
