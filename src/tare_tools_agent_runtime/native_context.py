@@ -173,6 +173,9 @@ class NativeContext:
             retained = sorted([r.sequence for turn in turns[-self.policy.keep_recent_turns:] for r in turn]
                               + [r.sequence for r in selected if r.event()['kind'] in {'user_message', 'host_observation'}])
             if not prefix:
+                # A soft trigger cannot compact empty history; admit calls that still fit the hard ceiling.
+                if count["input_tokens"] <= self.policy.hard_limit:
+                    return replace(request, admitted_request_sha256=count["request_sha256"])
                 raise ContextBlocked("NO_COMPACTABLE_HISTORY")
             prefix_projection = journal.project(ProjectionSpec(
                 1, "native-summary-source-v1", tuple(sorted(

@@ -341,7 +341,9 @@ has no separate fixed 64-message cap; existing message/journal size bounds remai
 
 With `max_compactions=0`, requests keep their original history and are admitted up
 to `window - output_reserve - margin`. The soft trigger only requests compaction;
-it does not discard otherwise usable context when compaction is disabled.
+it does not discard otherwise usable context when compaction is disabled or when
+no compactable history exists yet (for example on turn 0 before any earlier turn
+can be summarized). Requests above the hard ceiling still fail closed.
 
 ### Host observations (0.14.0)
 

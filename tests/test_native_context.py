@@ -194,12 +194,25 @@ def test_no_generation_without_usable_count_for_the_actual_request(cause):
     assert not model.requests
 
 
-def test_large_system_or_tools_with_no_history_cannot_trigger_useless_summary():
+@pytest.mark.parametrize("size", [881, 900])
+def test_large_system_or_tools_with_no_history_cannot_trigger_useless_summary(size):
     counter = Counter()
-    counter.initial_size = 900
+    counter.initial_size = size
     log, model = ConversationLog(), Model()
     assert session(log, model, counter).run(control()).reason == "NO_COMPACTABLE_HISTORY"
     assert not model.requests
+
+
+@pytest.mark.parametrize("size", [801, 850, 880])
+def test_soft_trigger_without_compactable_history_admits_within_hard_limit(size):
+    """Turn 0 (or <= keep_recent_turns) above soft trigger but <= hard_limit runs without blocking, then compacts once history exists."""
+    counter = Counter()
+    counter.initial_size = size
+    log, model = ConversationLog(), Model()
+    result = session(log, model, counter).run(control())
+    assert result.status == "proposed" and result.model_calls == 4
+    assert [r.purpose for r in model.requests] == ["model", "model", "summary", "model"]
+    assert len([e for e in events(log) if e["kind"] == "context_activated"]) == 1
 
 
 @pytest.mark.parametrize("failure,reason", [(ModelFailure("429"), "SUMMARY_FAILED"),
