@@ -152,6 +152,10 @@ class NativeContext:
                     break
         if candidate is None:
             if self.policy.max_compactions is not None and len(attempts) >= self.policy.max_compactions:
+                activated = {e["call_id"] for e in events if e["kind"] == "context_activated"}
+                if (count["input_tokens"] <= self.policy.hard_limit
+                        and attempts and attempts[-1]["call_id"] in activated):
+                    return replace(request, admitted_request_sha256=count["request_sha256"])
                 raise ContextBlocked("COMPACTION_BUDGET")
             if remaining_calls is not None and remaining_calls < 2:  # One summary plus the next implementation call.
                 raise ContextBlocked("MODEL_CALL_BUDGET")

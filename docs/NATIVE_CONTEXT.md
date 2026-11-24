@@ -31,11 +31,12 @@ For a shared input/output window W, output reserve O and margin M, the hard
 input ceiling is `W - O - M`. The trigger is `min(floor(trigger * W), ceiling)`;
 the post-compaction target uses the same formula with `target`. A request at
 the trigger is admitted; one above it normally requires compaction. On the last
-available model call, or when no compactable history exists yet, preserve the
+available model call, when no compactable history exists yet, or once the
+compaction budget has been cleanly spent by an activated summary, preserve the
 original request up to the hard ceiling: the soft trigger must not consume the
-final delivery opportunity, rewrite its cache prefix, or block an initial turn
-that fits the hard ceiling before any prior turn can be summarized. Requests
-above the hard ceiling still fail closed. O includes reasoning
+final delivery opportunity, rewrite its cache prefix, or block a turn that
+still fits the hard ceiling. Requests above the hard ceiling still fail closed
+(as do resumes after a failed or rejected compaction attempt). O includes reasoning
 when the provider accounts for it within output; it must not be subtracted twice.
 Profiles with separate input/output limits need their own qualification.
 
