@@ -499,3 +499,78 @@ def test_genuine_projection_refusal_blocks_without_model_dispatch_or_masking_oth
     with pytest.raises(ConversationRejected) as exc:
         session(OtherRefusal(), Model()).run(control())
     assert exc.value.reason == ConversationRejectReason.INVALID_PROJECTION
+
+
+def test_compaction_without_mutation_blocks_amnesia_loop_but_allows_edits_readonly_and_followup():
+    class RepeatingCompactionCounter(Counter):
+        def count(self, request, execution):
+            row = super().count(request, execution)
+            items = request.context.events()
+            if request.purpose == "model" and sum(e["kind"] == "model_returned" for e in items) >= 2:
+                row["input_tokens"] = 850
+            elif request.purpose == "model":
+                row["input_tokens"] = 300
+            return row
+
+    class LoopingModel(Model):
+        def __init__(self, *, edit_on=(), deliver_on=None):
+            super().__init__()
+            self.edit_on = set(edit_on)
+            self.deliver_on = deliver_on
+
+        def generate(self, request, execution):
+            if request.purpose == "summary":
+                self.requests.append(request)
+                assert request.admitted_request_sha256 == identity(request)
+                return self.summary
+            self.requests.append(request)
+            assert request.admitted_request_sha256 == identity(request)
+            self.main_calls += 1
+            if self.deliver_on is not None and self.main_calls >= self.deliver_on:
+                return ModelReply(text="Done", proposes_delivery=True)
+            tool = "edit" if self.main_calls in self.edit_on else "read"
+            return ModelReply(tool_calls=(ToolCall(f"c{self.main_calls}", tool, json.dumps({"n": self.main_calls})),))
+
+    # 1. Write-capable session with unlimited compactions & model calls looping read->compact stops at 3 compactions.
+    log, model = ConversationLog(), LoopingModel()
+    runtime = NativeSession(
+        session_id="s", instruction="Keep objective exact", capabilities=("read", "edit"),
+        required_context=("SPEC: immutable required source",), model=model, tools=Tools(), journal=log,
+        budget=NativeBudget(max_model_calls=None, max_stagnant_turns=6),
+        context=NativeContext(replace(POLICY, max_compactions=None),
+                              counter=RepeatingCompactionCounter().count, summarizer=model),
+    )
+    res = runtime.run(control())
+    assert res.status == "blocked" and res.reason == "NO_PROGRESS"
+    assert sum(e["kind"] == "context_activated" for e in events(log)) == 3
+    # Guard stops immediately once the 3rd compaction activates without dispatching another model call.
+    assert model.requests[-1].purpose == "summary"
+    summary_reqs = [r for r in model.requests if r.purpose == "summary"]
+    assert summary_reqs and "symbol names and line ranges" in summary_reqs[0].suffix
+
+    # 2. A succeeded edit resets the compaction-without-mutation counter so productive multi-compaction runs succeed.
+    log2, model2 = ConversationLog(), LoopingModel(edit_on={3, 5, 7}, deliver_on=8)
+    runtime2 = NativeSession(
+        session_id="s2", instruction="Keep objective exact", capabilities=("read", "edit"),
+        required_context=("SPEC: immutable required source",), model=model2, tools=Tools(), journal=log2,
+        budget=NativeBudget(max_model_calls=None, max_stagnant_turns=6),
+        context=NativeContext(replace(POLICY, max_compactions=None),
+                              counter=RepeatingCompactionCounter().count, summarizer=model2),
+    )
+    res2 = runtime2.run(control())
+    assert res2.status == "proposed"
+    assert sum(e["kind"] == "context_activated" for e in events(log2)) >= 4
+
+    # 3. Read-only sessions (no 'edit' capability) are not blocked by the edit-session amnesia guard and omit edit guidance.
+    log3, model3 = ConversationLog(), LoopingModel(deliver_on=7)
+    runtime3 = NativeSession(
+        session_id="s3", instruction="Keep objective exact", capabilities=("read",),
+        required_context=("SPEC: immutable required source",), model=model3, tools=Tools(), journal=log3,
+        budget=NativeBudget(max_model_calls=None, max_stagnant_turns=6),
+        context=NativeContext(replace(POLICY, max_compactions=None),
+                              counter=RepeatingCompactionCounter().count, summarizer=model3),
+    )
+    res3 = runtime3.run(control())
+    assert res3.status == "proposed"
+    assert sum(e["kind"] == "context_activated" for e in events(log3)) >= 4
+    assert all("symbol names and line ranges" not in r.suffix for r in model3.requests if r.purpose == "summary")

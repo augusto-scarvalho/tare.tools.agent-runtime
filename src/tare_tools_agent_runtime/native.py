@@ -184,6 +184,12 @@ class NativeOutcome:
     pending_id: str | None = None
 
 
+MAX_COMPACTIONS_WITHOUT_MUTATION = 3
+MUTATING_CAPABILITIES = frozenset({
+    "edit", "rename", "command", "terminal_write", "terminal_run", "write", "delete",
+})
+
+
 @dataclass
 class _State:
     binding: dict[str, Any] | None = None
@@ -192,6 +198,7 @@ class _State:
     auxiliary_calls: int = 0
     failures: int = 0
     stagnant: int = 0
+    compactions_without_mutation: int = 0
     pending: str | None = None
     reply: ModelReply | None = None
     effect_index: int = 0
@@ -381,7 +388,11 @@ class NativeSession:
                 if state.reply is not None:
                     self._consume(state, control)
                     continue
-                if self.budget.max_stagnant_turns is not None and state.stagnant >= self.budget.max_stagnant_turns:
+                if self.budget.max_stagnant_turns is not None and (
+                    state.stagnant >= self.budget.max_stagnant_turns
+                    or ("edit" in self.capabilities
+                        and state.compactions_without_mutation >= MAX_COMPACTIONS_WITHOUT_MUTATION)
+                ):
                     return NativeOutcome("blocked", "NO_PROGRESS", state.total_calls)
                 if (state.model_call_limit is not None and state.total_calls >= state.model_call_limit):
                     return NativeOutcome("exhausted", "MODEL_CALL_BUDGET", state.total_calls)
@@ -650,6 +661,11 @@ class NativeSession:
                                      str(exc), current.total_calls, pending_id=current.pending)
         if control.should_stop():
             return self._stop(control, self._read())
+        if (self.context is not None and self.budget.max_stagnant_turns is not None
+                and "edit" in self.capabilities):
+            current = self._read()
+            if current.compactions_without_mutation >= MAX_COMPACTIONS_WITHOUT_MUTATION:
+                return NativeOutcome("blocked", "NO_PROGRESS", current.total_calls)
         self.journal.append({"kind": "model_requested", "call_id": call_id})
         # We still know dispatch did not happen; persist that fact when possible.
         if control.should_stop():
@@ -763,6 +779,7 @@ class NativeSession:
                     state.model_call_limit = message.model_call_limit
                 state.terminal = state.reply = None
                 state.stagnant = state.effect_index = 0
+                state.compactions_without_mutation = 0
                 state.reply_progressed = False
                 previous = record
                 continue
@@ -782,6 +799,7 @@ class NativeSession:
                 has_observation = True
                 state.terminal = state.reply = None
                 state.stagnant = state.effect_index = 0
+                state.compactions_without_mutation = 0
                 state.reply_progressed = False
                 previous = record
                 continue
@@ -804,7 +822,9 @@ class NativeSession:
                 state.pending = None
             elif kind == "context_summary_interrupted" and state.pending == event["call_id"]:
                 pass
-            elif kind in {"context_counted", "context_activated", "context_summary_rejected"} and not state.pending:
+            elif kind == "context_activated" and not state.pending:
+                state.compactions_without_mutation += 1
+            elif kind in {"context_counted", "context_summary_rejected"} and not state.pending:
                 pass
             elif kind == "model_requested" and not state.pending and state.reply is None:
                 state.calls += 1
@@ -878,6 +898,9 @@ class NativeSession:
                     # Observation is preserved but cannot clear the uncertainty.
                     continue
                 state.pending = None
+                if (result.status == "succeeded"
+                        and state.reply.tool_calls[state.effect_index].name in MUTATING_CAPABILITIES):
+                    state.compactions_without_mutation = 0
                 state.effect_index += 1
                 state.reply_progressed = state.reply_progressed or result.progressed
                 if state.effect_index == len(state.reply.tool_calls):
