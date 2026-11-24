@@ -54,8 +54,13 @@ compaction replaces only the derived model projection.
 
 The continuation prompt requests a concise checkpoint (200–400 words as guidance,
 not an output or session ceiling): objective, changes, last verification, remaining
-work and explicitly unconfirmed hypotheses. Existing model/thinking parameters
-and the cache-friendly prefix are retained.
+work and explicitly unconfirmed hypotheses. When `edit` is in the session's
+capabilities, it also asks to preserve symbol names and line ranges so the next turn
+applies edits before re-reading other files, and `NativeSession` blocks with
+`NO_PROGRESS` (when `max_stagnant_turns` is enabled) if three consecutive compactions
+activate without a succeeded mutating effect (`edit`, `rename`, `command`, etc.) so
+unbounded compaction budgets cannot spin in a read-compaction amnesia loop. Existing
+model/thinking parameters and the cache-friendly prefix are retained.
 
 Hosts may inject `checkpoint(snapshot) -> str` into `NativeContext`. The resulting
 operational facts are stored with the summary intent and copied unchanged into
