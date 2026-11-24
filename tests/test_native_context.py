@@ -215,6 +215,43 @@ def test_soft_trigger_without_compactable_history_admits_within_hard_limit(size)
     assert len([e for e in events(log) if e["kind"] == "context_activated"]) == 1
 
 
+@pytest.mark.parametrize("size", [801, 850, 880, 881])
+def test_post_compaction_turn_above_soft_trigger_admits_within_hard_limit_and_blocks_above_it(size):
+    """After a successful compaction exhausts max_compactions, later turns <= hard_limit run even with >= 2 calls left."""
+    class FourTurnModel(Model):
+        def generate(self, request, execution):
+            if request.purpose == "summary":
+                return super().generate(request, execution)
+            self.requests.append(request)
+            assert request.admitted_request_sha256 == identity(request)
+            self.main_calls += 1
+            if self.main_calls < 4:
+                return ModelReply(tool_calls=(ToolCall(f"c{self.main_calls}", "read", "{}"),))
+            return ModelReply(text="Done", proposes_delivery=True)
+
+    class PostCompactionCounter(Counter):
+        def count(self, request, execution):
+            row = super().count(request, execution)
+            items = request.context.events()
+            if (request.purpose != "summary"
+                    and any(e["kind"] == "context_activated" for e in items)
+                    and sum(e["kind"] == "model_returned" for e in items) >= 2):
+                row["input_tokens"] = size
+            return row
+
+    log, model = ConversationLog(), FourTurnModel()
+    result = session(log, model, PostCompactionCounter(),
+                     budget=NativeBudget(max_model_calls=6)).run(control())
+    if size <= POLICY.hard_limit:
+        assert result.status == "proposed" and result.model_calls == 5
+        assert [r.purpose for r in model.requests] == ["model", "model", "summary", "model", "model"]
+        assert model.requests[-1].remaining_model_calls == 2
+    else:
+        assert result.status == "blocked" and result.reason == "COMPACTION_BUDGET"
+        assert result.model_calls == 4
+        assert [r.purpose for r in model.requests] == ["model", "model", "summary", "model"]
+
+
 @pytest.mark.parametrize("failure,reason", [(ModelFailure("429"), "SUMMARY_FAILED"),
     (ModelReply(text="partial", complete=False), "INVALID_SUMMARY"),
     (ModelReply(tool_calls=(ToolCall("oops", "read", '{}'),)), "INVALID_SUMMARY")])
