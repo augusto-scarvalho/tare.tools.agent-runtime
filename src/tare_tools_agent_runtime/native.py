@@ -185,9 +185,21 @@ class NativeOutcome:
 
 
 MAX_COMPACTIONS_WITHOUT_MUTATION = 3
+MAX_READONLY_COMPACTIONS = 3
 MUTATING_CAPABILITIES = frozenset({
     "edit", "rename", "command", "terminal_write", "terminal_run", "write", "delete",
 })
+READONLY_CAPABILITIES = frozenset({
+    "read", "list", "search", "context", "research", "report_signal",
+})
+
+
+def _compaction_loop_limit(capabilities: tuple[str, ...]) -> int | None:
+    if "edit" in capabilities:
+        return MAX_COMPACTIONS_WITHOUT_MUTATION
+    if capabilities and set(capabilities) <= READONLY_CAPABILITIES:
+        return MAX_READONLY_COMPACTIONS
+    return None
 
 
 @dataclass
@@ -388,10 +400,11 @@ class NativeSession:
                 if state.reply is not None:
                     self._consume(state, control)
                     continue
+                compaction_limit = _compaction_loop_limit(self.capabilities)
                 if self.budget.max_stagnant_turns is not None and (
                     state.stagnant >= self.budget.max_stagnant_turns
-                    or ("edit" in self.capabilities
-                        and state.compactions_without_mutation >= MAX_COMPACTIONS_WITHOUT_MUTATION)
+                    or (compaction_limit is not None
+                        and state.compactions_without_mutation >= compaction_limit)
                 ):
                     return NativeOutcome("blocked", "NO_PROGRESS", state.total_calls)
                 if (state.model_call_limit is not None and state.total_calls >= state.model_call_limit):
@@ -661,10 +674,11 @@ class NativeSession:
                                      str(exc), current.total_calls, pending_id=current.pending)
         if control.should_stop():
             return self._stop(control, self._read())
+        compaction_limit = _compaction_loop_limit(self.capabilities)
         if (self.context is not None and self.budget.max_stagnant_turns is not None
-                and "edit" in self.capabilities):
+                and compaction_limit is not None):
             current = self._read()
-            if current.compactions_without_mutation >= MAX_COMPACTIONS_WITHOUT_MUTATION:
+            if current.compactions_without_mutation >= compaction_limit:
                 return NativeOutcome("blocked", "NO_PROGRESS", current.total_calls)
         self.journal.append({"kind": "model_requested", "call_id": call_id})
         # We still know dispatch did not happen; persist that fact when possible.

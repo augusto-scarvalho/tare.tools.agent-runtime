@@ -561,16 +561,32 @@ def test_compaction_without_mutation_blocks_amnesia_loop_but_allows_edits_readon
     assert res2.status == "proposed"
     assert sum(e["kind"] == "context_activated" for e in events(log2)) >= 4
 
-    # 3. Read-only sessions (no 'edit' capability) are not blocked by the edit-session amnesia guard and omit edit guidance.
+    # 3. Pure read-only lookup sessions (planners/explorers/auditors) stop after 3 compactions with read-only guidance.
     log3, model3 = ConversationLog(), LoopingModel(deliver_on=7)
     runtime3 = NativeSession(
-        session_id="s3", instruction="Keep objective exact", capabilities=("read",),
+        session_id="s3", instruction="Keep objective exact", capabilities=("read", "list", "search"),
         required_context=("SPEC: immutable required source",), model=model3, tools=Tools(), journal=log3,
         budget=NativeBudget(max_model_calls=None, max_stagnant_turns=6),
         context=NativeContext(replace(POLICY, max_compactions=None),
                               counter=RepeatingCompactionCounter().count, summarizer=model3),
     )
     res3 = runtime3.run(control())
-    assert res3.status == "proposed"
-    assert sum(e["kind"] == "context_activated" for e in events(log3)) >= 4
-    assert all("symbol names and line ranges" not in r.suffix for r in model3.requests if r.purpose == "summary")
+    assert res3.status == "blocked" and res3.reason == "NO_PROGRESS"
+    assert sum(e["kind"] == "context_activated" for e in events(log3)) == 3
+    summary_suffixes3 = [r.suffix for r in model3.requests if r.purpose == "summary"]
+    assert summary_suffixes3 and all("does not re-read already-covered files" in s for s in summary_suffixes3)
+    assert all("applies its next edit" not in s for s in summary_suffixes3)
+
+    # 4. Multi-tool orchestrator/coordinator sessions (non-edit, non-lookup-only) are not capped at 2 compactions.
+    log4, model4 = ConversationLog(), LoopingModel(deliver_on=7)
+    runtime4 = NativeSession(
+        session_id="s4", instruction="Keep objective exact", capabilities=("read", "implement"),
+        required_context=("SPEC: immutable required source",), model=model4, tools=Tools(), journal=log4,
+        budget=NativeBudget(max_model_calls=None, max_stagnant_turns=6),
+        context=NativeContext(replace(POLICY, max_compactions=None),
+                              counter=RepeatingCompactionCounter().count, summarizer=model4),
+    )
+    res4 = runtime4.run(control())
+    assert res4.status == "proposed"
+    assert sum(e["kind"] == "context_activated" for e in events(log4)) >= 4
+    assert all("symbol names and line ranges" not in r.suffix for r in model4.requests if r.purpose == "summary")

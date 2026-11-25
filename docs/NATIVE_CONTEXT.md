@@ -59,7 +59,12 @@ capabilities, it also asks to preserve symbol names and line ranges so the next 
 applies edits before re-reading other files, and `NativeSession` blocks with
 `NO_PROGRESS` (when `max_stagnant_turns` is enabled) if three consecutive compactions
 activate without a succeeded mutating effect (`edit`, `rename`, `command`, etc.) so
-unbounded compaction budgets cannot spin in a read-compaction amnesia loop. Existing
+unbounded compaction budgets cannot spin in a read-compaction amnesia loop. Pure
+read-only lookup sessions (capabilities strictly within `read`, `list`, `search`,
+`context`, `research`, `report_signal`) likewise preserve inspected paths/symbols/ranges
+in their summary prompt to avoid re-reading covered files and stop with `NO_PROGRESS`
+after three consecutive compactions without delivering (reset on `user_message` or
+`host_observation`), while multi-tool coordinator sessions remain unaffected. Existing
 model/thinking parameters and the cache-friendly prefix are retained.
 
 Hosts may inject `checkpoint(snapshot) -> str` into `NativeContext`. The resulting
