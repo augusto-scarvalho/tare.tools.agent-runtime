@@ -124,7 +124,7 @@ class NativeContext:
 
     def prepare(self, request: ModelRequest, journal: NativeJournal,
                 control: ExecutionControl, remaining_calls: int | None) -> ModelRequest:
-        from .native import ModelReply, ModelFailure, ToolCall
+        from .native import ModelReply, ModelFailure, READONLY_CAPABILITIES, ToolCall
 
         count = self._count(request, journal, control)
         # Disabled compaction and the final call use the hard admission ceiling.
@@ -186,12 +186,20 @@ class NativeContext:
                     [r.sequence for r in prefix]
                     + [r.sequence for r in selected if r.event()['kind'] in {'user_message', 'host_observation'}]))))
             summary_id = f"{request.session_id}/summary/{len(attempts) + 1}"
-            edit_guidance = (
-                " When edits remain, record exact symbol names and line ranges already inspected so the next turn "
-                "reads only the minimal target span (in larger chunks, up to 200 lines) and applies its next edit "
-                "before re-reading other files."
-                if "edit" in request.capabilities else ""
-            )
+            if "edit" in request.capabilities:
+                continuation_guidance = (
+                    " When edits remain, record exact symbol names and line ranges already inspected so the next turn "
+                    "reads only the minimal target span (in larger chunks, up to 200 lines) and applies its next edit "
+                    "before re-reading other files."
+                )
+            elif request.capabilities and set(request.capabilities) <= READONLY_CAPABILITIES:
+                continuation_guidance = (
+                    " Record exact file paths, symbol names, and line ranges already inspected so the next turn "
+                    "does not re-read already-covered files and delivers its complete response directly (recording "
+                    "minor unknowns in remaining)."
+                )
+            else:
+                continuation_guidance = ""
             summary_request = replace(request, call_id=summary_id, context=prefix_projection,
                 purpose="summary", remaining_model_calls=None, suffix=(
                     "Summarize the earlier task history as a concise continuation checkpoint, aiming for "
@@ -202,7 +210,7 @@ class NativeContext:
                     "from claims. A successful edit means the requested replacement was applied, not that "
                     "the code is correct. Do not turn suspected tool corruption into fact. Omit source dumps, "
                     "repeated output and abandoned repair narratives. Keep concrete next actions and avoid "
-                    f"inventing new obligations.{edit_guidance} Recent complete turns remain available separately. "
+                    f"inventing new obligations.{continuation_guidance} Recent complete turns remain available separately. "
                     "Return summary text only; do not call tools or propose delivery."))
             summary_count = self._count(summary_request, journal, control)
             if summary_count["profile_digest"] != count["profile_digest"]:
